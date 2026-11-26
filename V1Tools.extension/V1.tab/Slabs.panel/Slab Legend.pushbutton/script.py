@@ -3,6 +3,10 @@
 import slab_logic
 import slab_revit
 import slab_ui
+try:
+    reload
+except NameError:
+    from importlib import reload
 reload(slab_logic)
 reload(slab_revit)
 reload(slab_ui)

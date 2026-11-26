@@ -6,6 +6,10 @@ import traceback
 from pyrevit import DB, revit, forms
 from Autodesk.Revit.Exceptions import OperationCanceledException
 import slab_revit as api
+try:
+    text_type=unicode
+except NameError:
+    text_type=str
 
 def choose(items, title):
     if len(items)==1:return items[0]
@@ -33,10 +37,10 @@ def find_source(doc,template):
     return choose(candidates,u'选择要沿用格式和颜色的原图例')
 
 def write_report(report):
-    folder=os.path.join(os.environ['LOCALAPPDATA'],'JetRevitTools')
+    folder=os.path.join(os.environ['LOCALAPPDATA'],'V1RevitTools')
     if not os.path.isdir(folder):os.makedirs(folder)
     with io.open(os.path.join(folder,'last_run.json'),'w',encoding='utf-8') as f:
-        f.write(unicode(json.dumps(report,ensure_ascii=False,indent=2)))
+        f.write(text_type(json.dumps(report,ensure_ascii=False,indent=2)))
 
 def place(doc,uidoc):
     sheet=doc.ActiveView
@@ -101,7 +105,7 @@ def run(shift=False):
         if dry:
             forms.alert(u'检查通过：{0} 个平面、{1} 个标高过滤器。\n试运行已回滚，模型没有保留修改。'.format(len(result['views']),result['filters']))
         else:
-            forms.alert(u'已更新 {0} 个平面的过滤器和图例。\n只纳入 ≥20㎡ 的水平楼板。\n\n图例在 Drafting Views 中，以 Jet SLAB 开头。\n打开 Sheet，按住 Shift 点击本按钮可放置图例。\n模型修改后，再点一次刷新。'.format(len(result['views'])),title=u'楼板上色与图例')
+            forms.alert(u'已更新 {0} 个平面的过滤器和图例。\n只纳入 ≥20㎡ 的水平楼板。\n\n图例在 Drafting Views 中，以 V1 SLAB 开头。\n打开 Sheet，按住 Shift 点击本按钮可放置图例。\n模型修改后，再点一次刷新。'.format(len(result['views'])),title=u'V1 楼板上色与图例')
     except Exception as exc:
         write_report({'error':traceback.format_exc()})
-        forms.alert(u'未完成更新：\n'+unicode(exc),title=u'楼板上色与图例')
+        forms.alert(u'未完成更新：\n'+text_type(exc),title=u'V1 楼板上色与图例')

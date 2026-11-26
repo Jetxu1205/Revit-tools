@@ -16,7 +16,7 @@ def schema():
     s = DB.ExtensibleStorage.Schema.Lookup(SCHEMA_GUID)
     if s:return s
     b = DB.ExtensibleStorage.SchemaBuilder(SCHEMA_GUID)
-    b.SetSchemaName('JetSlabLegendV1')
+    b.SetSchemaName('SlabLegendV1')
     b.AddSimpleField('Data', String)
     return b.Finish()
 
@@ -191,42 +191,41 @@ def update_filters(doc, template, data):
         previous=oldmeta.get('filters',{}).get(str(key))
         f=doc.GetElement(DB.ElementId(previous)) if previous else None
         if f is None:
-            f=DB.SelectionFilterElement.Create(doc,'Jet SFL {0} {1:+.3f}'.format(template.Id.IntegerValue,key/1000.0))
+            f=DB.SelectionFilterElement.Create(doc,'V1 SFL {0} {1:+.3f}'.format(template.Id.IntegerValue,key/1000.0))
         elif not isinstance(f,DB.SelectionFilterElement) or read_meta(f).get('template')!=template.UniqueId:
             raise ValueError('Managed filter identity changed; update stopped.')
+        f.Name='V1 SFL {0} {1:+.3f}'.format(template.Id.IntegerValue,key/1000.0)
         f.SetElementIds(ids(sorted(union[key])))
         write_meta(f,{'template':template.UniqueId,'top_mm':key})
         managed.append((key,f))
-    # Rebuild priority on this template, preserving every unrelated filter and override.
+    # Touch only owned slab filters and explicitly recognized floor-only legacy filters.
+    # Never remove/re-add unrelated filters or write their overrides, visibility or order.
     oldorder=list(template.GetOrderedFilters())
-    keep=[]
     oldmanaged=set(oldmeta.get('filters',{}).values())
+    current=set(f.Id.IntegerValue for key,f in managed)
     for fid in oldorder:
         f=doc.GetElement(fid)
         legacy=False
         if isinstance(f,DB.ParameterFilterElement) and f.Name.startswith('Floor SFL '):
             cats=list(f.GetCategories())
             legacy=len(cats)==1 and cats[0]==DB.ElementId(DB.BuiltInCategory.OST_Floors)
-        if fid.IntegerValue not in oldmanaged and not legacy:
-            keep.append((fid,template.GetFilterOverrides(fid),template.GetFilterVisibility(fid),template.GetIsFilterEnabled(fid)))
-        template.RemoveFilter(fid)
+        obsolete=(fid.IntegerValue in oldmanaged and fid.IntegerValue not in current
+                  and isinstance(f,DB.SelectionFilterElement)
+                  and read_meta(f).get('template')==template.UniqueId)
+        if legacy or obsolete:
+            template.RemoveFilter(fid)
     solid=next(p.Id for p in DB.FilteredElementCollector(doc).OfClass(DB.FillPatternElement) if p.GetFillPattern().IsSolidFill)
     for key,f in managed:
         o=DB.OverrideGraphicSettings()
         c=DB.Color(*data['colors'][key])
         o.SetSurfaceForegroundPatternId(solid).SetSurfaceForegroundPatternColor(c).SetSurfaceForegroundPatternVisible(True)
         o.SetCutForegroundPatternId(solid).SetCutForegroundPatternColor(c).SetCutForegroundPatternVisible(True)
-        template.AddFilter(f.Id)
+        if f.Id not in oldorder:template.AddFilter(f.Id)
         template.SetFilterOverrides(f.Id,o)
-    for fid,override,visible,enabled in keep:
-        template.AddFilter(fid)
-        template.SetFilterOverrides(fid,override)
-        template.SetFilterVisibility(fid,visible)
-        template.SetIsFilterEnabled(fid,enabled)
     return {str(k):f.Id.IntegerValue for k,f in managed}
 
 def apply(doc, template, source, data, dry_run=False):
-    group=DB.TransactionGroup(doc,'Jet - Floor colors and slab legends')
+    group=DB.TransactionGroup(doc,'V1 - Floor colors and slab legends')
     group.Start()
     report={'dry_run':dry_run,'views':[], 'filters':0, 'replaced_on_sheets':[]}
     try:
@@ -244,7 +243,7 @@ def apply(doc, template, source, data, dry_run=False):
                 else:
                     # Duplicate without detailing. Rendering copies the user's original elements.
                     target=doc.GetElement(source.Duplicate(DB.ViewDuplicateOption.Duplicate))
-                    target.Name='Jet SLAB - '+plan.Name
+                target.Name='V1 SLAB - '+plan.Name
                 target.Scale=source.Scale
                 created=render_legend(doc,source,target,data['layout'],groups,data['colors'])
                 write_meta(target,{'plan':plan.UniqueId,'source':source.UniqueId,'elements':created})

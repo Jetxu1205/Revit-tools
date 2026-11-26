@@ -2,7 +2,7 @@ import importlib.util
 import pathlib
 import unittest
 
-path = pathlib.Path(__file__).parents[1] / 'JetTools.extension/Jet Tools.tab/Slabs.panel/Slab Legend.pushbutton/slab_logic.py'
+path = pathlib.Path(__file__).parents[1] / 'V1Tools.extension/V1.tab/Slabs.panel/Slab Legend.pushbutton/slab_logic.py'
 spec = importlib.util.spec_from_file_location('logic', path)
 logic = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(logic)

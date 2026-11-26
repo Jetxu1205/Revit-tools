@@ -1,4 +1,4 @@
 title: "楼板上色\n与图例"
 tooltip: "更新共用模板的楼板颜色和各层图例。只纳入面积至少20平方米的水平楼板。Shift点击可检查或放到Sheet。"
-author: Jet
+author: V1
 min_revit_version: 2023
